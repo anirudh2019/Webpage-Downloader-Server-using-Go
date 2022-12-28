@@ -58,5 +58,4 @@ Where `sanitized_url` is the URL of the webpage with any special characters repl
 * The server is designed to accept only POST requests to the `/pagesource` endpoint only.
 * The server is running on localhost at port 8080
 * The URL in the request payload is a valid URL
-* The retry limit in the request payload is a positive integer
 * The server has permission to create and modify files in the current working directory
