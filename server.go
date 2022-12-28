@@ -34,6 +34,7 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 	filePath := fmt.Sprintf("%s.html", sanitizedURL)
 	info, err := os.Stat(filePath)
 	if err == nil && time.Since(info.ModTime()) < cacheExpiration {
+		fmt.Printf("The following webpage has already been requested in the last 24 hours: %s\n", url)
 		// Return the response payload for the cached file
 		return &responsePayload{
 			ID:        sanitizedURL,
@@ -84,7 +85,11 @@ func sanitizeURL(url string) string {
 	url = strings.Replace(url, "http://", "", -1)
 	url = strings.Replace(url, "https://", "", -1)
 	url = strings.Replace(url, "/", "_", -1)
-	return strings.ReplaceAll(url, "/?%*:|&<>", "_")
+	url = strings.Replace(url, "?", "_", -1)
+	url = strings.Replace(url, "%", "_", -1)
+	url = strings.Replace(url, "=", "_", -1)
+	url = strings.Replace(url, "&", "_", -1)
+	return strings.ReplaceAll(url, "/?%=*:|&<>", "_")
 }
 
 func main() {
