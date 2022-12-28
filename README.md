@@ -1,7 +1,7 @@
 # Webpage Downloader Server using Go
-This is a Go server program that provides an endpoint for downloading a webpage and returning the downloaded file to the client. 
+This is a Go server program that provides an endpoint for downloading a webpage and returning the downloaded file to the client. It also uses a **pool of workers** that do the work of downloading the requested webpage, limiting the number of requests based on number of active workers.
 
-The server accepts a POST request to the `/pagesource` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
+The server accepts POST requests to the `/pagesource` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
 
 Table of contents
 =================
@@ -10,9 +10,12 @@ Table of contents
 * [Installation](#installation)
 * [Usage](#usage)
 * [Assumptions](#assumptions)
+* [Code Explaination](#code-explaination)
 <!--te-->
 
 ## Features:
+* The server uses a **group of worker goroutines** to download the requested webpage and two channels for communication between workers and server, limiting the number of requests based on the number of active workers.
+
 * The server retries maximum upto 10 times or the specified retry limit, whichever is lower, before either successfully downloading the webpage or marking the page as a failure.
 
 * The server also has caching support and will serve the downloaded webpage from the local cache if it has already been requested in the last 24 hours.
@@ -49,15 +52,15 @@ The JSON payload returned by the server will have the following structure:
 
 ```
 {
-	"id": "sanitized_url",
-	"uri": "sanitized_url.html",
-	"source_uri": "original_url"
+	"id": "www.example.com",
+	"uri": "https://www.example.com",
+	"source_uri": "www.example.com.html"
 }
 ```
 Where `sanitized_url` is the URL of the webpage with any special characters replaced with underscores, and `original_url` is the original URL of the webpage specified in the request payload.
 
 ## Assumptions:
+* The server waits for the webpage to be downloaded by a worker goroutine before returning that response payload.
 * The server is designed to accept only POST requests to the `/pagesource` endpoint only.
-* The server is running on localhost at port 8080
 * The URL in the request payload is a valid URL
 * The server has permission to create and modify files in the current working directory
