@@ -1,7 +1,7 @@
 # Webpage Downloader Server using Go
 This is a Go server program that provides an endpoint for downloading a webpage and returning the downloaded file to the client. 
 
-The server accepts a POST request to the `/download` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
+The server accepts a POST request to the `/pagesource` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
 
 Table of contents
 =================
@@ -35,13 +35,13 @@ go run server.go
 ```
 This will start the server and listen for incoming HTTP requests on port 8080.
 
-To download a webpage, you can send a POST request to the `/download` endpoint with a JSON payload containing the URL and retry limit of the webpage to download. For example, you can use the `curl` command to send a request like this:
+To download a webpage, you can send a POST request to the `/pagesource` endpoint with a JSON payload containing the URL and retry limit of the webpage to download. For example, you can use the `curl` command to send a request like this:
 
 ```
-curl --location --request POST http://localhost:8080/download --header "Content-Type: application/json" --data-raw "{\"url\": \"https://www.example.com\", \"retry_limit\": 5}"
+curl --location --request POST http://localhost:8080/pagesource --header "Content-Type: application/json" --data-raw "{\"url\": \"https://www.example.com\", \"retry_limit\": 5}"
 ```
 
-This will send a POST request to the `/download` endpoint with a JSON payload containing the URL "https://www.example.com" and a retry limit of 5. The server will retrieve the webpage from the specified URL and download it as a local file, then return a JSON payload with the ID, URI, and source URI of the downloaded file.
+This will send a POST request to the `/pagesource` endpoint with a JSON payload containing the URL "https://www.example.com" and a retry limit of 5. The server will retrieve the webpage from the specified URL and download it as a local file, then return a JSON payload with the ID, URI, and source URI of the downloaded file.
 
 The JSON payload returned by the server will have the following structure:
 
