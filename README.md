@@ -55,6 +55,7 @@ The JSON payload returned by the server will have the following structure:
 Where `sanitized_url` is the URL of the webpage with any special characters replaced with underscores, and `original_url` is the original URL of the webpage specified in the request payload.
 
 ## Assumptions:
+* The server is designed to accept POST requests to the /pagesource endpoint. It does not accept GET requests.
 * The server is running on localhost at port 8080
 * The URL in the request payload is a valid URL
 * The retry limit in the request payload is a positive integer
