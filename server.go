@@ -3,84 +3,91 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"log"
+	"io"
 	"net/http"
 	"os"
 	"time"
 )
 
-// PageRequest represents the request payload that the endpoint expects.
-type PageRequest struct {
-	URI        string `json:"uri"`
-	RetryLimit int    `json:"retryLimit"`
+const defaultMaxRetries = 10
+
+type requestPayload struct {
+	URL        string `json:"url"`
+	RetryLimit int    `json:"retry_limit"`
 }
 
-// PageResponse represents the response payload that the endpoint returns.
-type PageResponse struct {
+type responsePayload struct {
 	ID        string `json:"id"`
 	URI       string `json:"uri"`
-	SourceURI string `json:"sourceUri"`
+	SourceURI string `json:"source_uri"`
+}
+
+func downloadPage(url string, retryLimit int) (*responsePayload, error) {
+	if retryLimit <= 0 {
+		retryLimit = defaultMaxRetries
+	}
+
+	for i := 0; i < retryLimit; i++ {
+		// Make HTTP GET request to the specified URL
+		resp, err := http.Get(url)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		// Generate a unique ID for the downloaded file
+		id := fmt.Sprintf("%d", time.Now().UnixNano())
+
+		// Create a local file to store the webpage
+		file, err := os.Create(fmt.Sprintf("%s.html", id))
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+
+		// Copy the response body to the local file
+		_, err = io.Copy(file, resp.Body)
+		if err != nil {
+			continue
+		}
+
+		// Return the response payload
+		return &responsePayload{
+			ID:        id,
+			URI:       file.Name(),
+			SourceURI: url,
+		}, nil
+	}
+
+	// Return an error if the maximum number of retries has been reached
+	return nil, fmt.Errorf("Failed to download webpage after %d retries", retryLimit)
 }
 
 func main() {
-	http.HandleFunc("/pagesource", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
-			return
-		}
-
-		// Parse the request payload.
-		var req PageRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	http.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
+		// Parse the request payload
+		var payload requestPayload
+		err := json.NewDecoder(r.Body).Decode(&payload)
+		if err != nil {
 			http.Error(w, "Invalid request payload", http.StatusBadRequest)
 			return
 		}
 
-		// Fetch the webpage and download it as a file.
-		var err error
-		var resp *http.Response
-		for i := 0; i < req.RetryLimit; i++ {
-			resp, err = http.Get(req.URI)
-			if err == nil {
-				break
-			}
-			time.Sleep(time.Second)
-		}
+		// Call the downloadPage function to download the webpage
+		resp, err := downloadPage(payload.URL, payload.RetryLimit)
 		if err != nil {
-			http.Error(w, "Failed to fetch webpage", http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		defer resp.Body.Close()
 
-		// Generate a unique ID for the file.
-		id := fmt.Sprintf("%x", time.Now().UnixNano())
-
-		// Save the file to the local file system.
-		file, err := os.Create(fmt.Sprintf("/files/%s.html", id))
+		// Return the response payload as JSON
+		w.Header().Set("Content-Type", "application/json")
+		err = json.NewEncoder(w).Encode(resp)
 		if err != nil {
-			http.Error(w, "Failed to create file", http.StatusInternalServerError)
+			http.Error(w, "Error encoding response payload", http.StatusInternalServerError)
 			return
 		}
-		defer file.Close()
-		if _, err := ioutil.ReadAll(resp.Body); err != nil {
-			http.Error(w, "Failed to read response body", http.StatusInternalServerError)
-			return
-		}
-
-		// Return the response payload.
-		res := PageResponse{
-			ID:        id,
-			URI:       req.URI,
-			SourceURI: fmt.Sprintf("/files/%s.html", id),
-		}
-
-		if err := json.NewEncoder(w).Encode(res); err != nil {
-			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-			return
-		}
-
 	})
-	log.Println("Starting server on port 7771...")
-	log.Fatal(http.ListenAndServe(":7771", nil))
+	// Start the server
+	http.ListenAndServe(":8080", nil)
 }
