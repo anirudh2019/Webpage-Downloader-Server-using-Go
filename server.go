@@ -14,6 +14,7 @@ import (
 const (
 	defaultMaxRetries = 10
 	cacheExpiration   = 24 * time.Hour
+	workerCount       = 5
 )
 
 type requestPayload struct {
@@ -25,6 +26,11 @@ type responsePayload struct {
 	ID        string `json:"id"`
 	URI       string `json:"uri"`
 	SourceURI string `json:"source_uri"`
+}
+
+type downloadResult struct {
+	Payload *responsePayload
+	Error   error
 }
 
 func downloadPage(url string, retryLimit int) (*responsePayload, error) {
@@ -94,6 +100,27 @@ func sanitizeURL(url string) string {
 }
 
 func main() {
+	// Create a channel for the webpages to be downloaded
+	requestQueue := make(chan requestPayload)
+	// Create a channel for the download results
+	resultQueue := make(chan downloadResult)
+
+	// Start the worker goroutines
+	for i := 0; i < workerCount; i++ {
+		go func() {
+			// Continuously check the requestQueue channel for new webpages to download
+			for payload := range requestQueue {
+				// Call the downloadPage function to download the webpage
+				payload, err := downloadPage(payload.URL, payload.RetryLimit)
+				// Send the result to the resultQueue channel
+				resultQueue <- downloadResult{
+					Payload: payload,
+					Error:   err,
+				}
+			}
+		}()
+	}
+
 	http.HandleFunc("/pagesource", func(w http.ResponseWriter, r *http.Request) {
 		// Return an error if the request method is not POST
 		if r.Method != http.MethodPost {
@@ -109,16 +136,19 @@ func main() {
 			return
 		}
 
-		// Call the downloadPage function to download the webpage
-		resp, err := downloadPage(payload.URL, payload.RetryLimit)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
+		// Add the webpage to the requestQueue
+		requestQueue <- payload
+
+		// Wait for the download result
+		result := <-resultQueue
 
 		// Return the response payload as JSON
 		w.Header().Set("Content-Type", "application/json")
-		err = json.NewEncoder(w).Encode(resp)
+		if result.Error != nil {
+			http.Error(w, result.Error.Error(), http.StatusInternalServerError)
+			return
+		}
+		err = json.NewEncoder(w).Encode(result.Payload)
 		if err != nil {
 			http.Error(w, "Error encoding response payload", http.StatusInternalServerError)
 			return
