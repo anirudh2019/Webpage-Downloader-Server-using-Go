@@ -10,8 +10,10 @@ import (
 	"time"
 )
 
-const defaultMaxRetries = 10
-const cacheExpiration = 24 * time.Hour
+const (
+	defaultMaxRetries = 10
+	cacheExpiration   = 24 * time.Hour
+)
 
 type requestPayload struct {
 	URL        string `json:"url"`
@@ -35,12 +37,12 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 		// Return the response payload for the cached file
 		return &responsePayload{
 			ID:        sanitizedURL,
-			URI:       filePath,
-			SourceURI: url,
+			URI:       url,
+			SourceURI: filePath,
 		}, nil
 	}
 
-	if retryLimit <= 0 {
+	if retryLimit <= 0 || retryLimit > defaultMaxRetries {
 		retryLimit = defaultMaxRetries
 	}
 
@@ -68,8 +70,8 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 		// Return the response payload
 		return &responsePayload{
 			ID:        sanitizedURL,
-			URI:       filePath,
-			SourceURI: url,
+			URI:       url,
+			SourceURI: filePath,
 		}, nil
 	}
 
@@ -79,18 +81,20 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 
 func sanitizeURL(url string) string {
 	// Replace any special characters in the URL with underscores
-	// return strings.ReplaceAll(url, "/?%*:|<>", "_") // \, "
-	// return strings.ReplaceAll(url, `/\?%*:|"<>`, "_")
-	// return strings.ReplaceAll(url, "?%*:/|\"<>", "_")
-	// return strings.ReplaceAll(url, `/\?%*:|"<>\`, "_")
 	url = strings.Replace(url, "http://", "", -1)
 	url = strings.Replace(url, "https://", "", -1)
 	url = strings.Replace(url, "/", "_", -1)
-	return strings.ReplaceAll(url, "/?%*:|<>", "_") // \, "
+	return strings.ReplaceAll(url, "/?%*:|&<>", "_")
 }
 
 func main() {
-	http.HandleFunc("/download", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/pagesource", func(w http.ResponseWriter, r *http.Request) {
+		// Return an error if the request method is not POST
+		if r.Method != http.MethodPost {
+			http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+			return
+		}
+
 		// Parse the request payload
 		var payload requestPayload
 		err := json.NewDecoder(r.Body).Decode(&payload)
@@ -113,6 +117,11 @@ func main() {
 			http.Error(w, "Error encoding response payload", http.StatusInternalServerError)
 			return
 		}
+	})
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Return an error for any requests to the root path or any other path
+		http.Error(w, "Invalid request path", http.StatusNotFound)
 	})
 
 	// Start the server
