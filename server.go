@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -46,6 +47,10 @@ func main() {
 			}
 			time.Sleep(time.Second)
 		}
+		if err != nil {
+			http.Error(w, "Failed to fetch webpage", http.StatusInternalServerError)
+			return
+		}
 		defer resp.Body.Close()
 
 		// Generate a unique ID for the file.
@@ -53,7 +58,15 @@ func main() {
 
 		// Save the file to the local file system.
 		file, err := os.Create(fmt.Sprintf("/files/%s.html", id))
+		if err != nil {
+			http.Error(w, "Failed to create file", http.StatusInternalServerError)
+			return
+		}
 		defer file.Close()
+		if _, err := ioutil.ReadAll(resp.Body); err != nil {
+			http.Error(w, "Failed to read response body", http.StatusInternalServerError)
+			return
+		}
 
 		// Return the response payload.
 		res := PageResponse{
@@ -66,6 +79,7 @@ func main() {
 			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 			return
 		}
+
 	})
 	log.Println("Starting server on port 7771...")
 	log.Fatal(http.ListenAndServe(":7771", nil))
