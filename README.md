@@ -3,6 +3,15 @@ This is a Go server program that provides an endpoint for downloading a webpage 
 
 The server accepts a POST request to the `/download` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
 
+Table of contents
+=================
+<!--ts-->
+* [Features](#features)
+* [Installation](#installation)
+* [Usage](#usage)
+* [Assumptions](#assumptions)
+<!--te-->
+
 ## Features:
 * The server retries maximum upto 10 times or the specified retry limit, whichever is lower, before either successfully downloading the webpage or marking the page as a failure.
 
