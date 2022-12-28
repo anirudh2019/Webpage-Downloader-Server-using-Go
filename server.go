@@ -6,10 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 )
 
 const defaultMaxRetries = 10
+const cacheExpiration = 24 * time.Hour
 
 type requestPayload struct {
 	URL        string `json:"url"`
@@ -23,6 +25,21 @@ type responsePayload struct {
 }
 
 func downloadPage(url string, retryLimit int) (*responsePayload, error) {
+	// Sanitize the URL by replacing any special characters with underscores
+	sanitizedURL := sanitizeURL(url)
+
+	// Check if the webpage has already been requested in the last 24 hours
+	filePath := fmt.Sprintf("%s.html", sanitizedURL)
+	info, err := os.Stat(filePath)
+	if err == nil && time.Since(info.ModTime()) < cacheExpiration {
+		// Return the response payload for the cached file
+		return &responsePayload{
+			ID:        sanitizedURL,
+			URI:       filePath,
+			SourceURI: url,
+		}, nil
+	}
+
 	if retryLimit <= 0 {
 		retryLimit = defaultMaxRetries
 	}
@@ -35,11 +52,8 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 		}
 		defer resp.Body.Close()
 
-		// Generate a unique ID for the downloaded file
-		id := fmt.Sprintf("%d", time.Now().UnixNano())
-
 		// Create a local file to store the webpage
-		file, err := os.Create(fmt.Sprintf("%s.html", id))
+		file, err := os.Create(filePath)
 		if err != nil {
 			return nil, err
 		}
@@ -53,14 +67,26 @@ func downloadPage(url string, retryLimit int) (*responsePayload, error) {
 
 		// Return the response payload
 		return &responsePayload{
-			ID:        id,
-			URI:       file.Name(),
+			ID:        sanitizedURL,
+			URI:       filePath,
 			SourceURI: url,
 		}, nil
 	}
 
 	// Return an error if the maximum number of retries has been reached
 	return nil, fmt.Errorf("Failed to download webpage after %d retries", retryLimit)
+}
+
+func sanitizeURL(url string) string {
+	// Replace any special characters in the URL with underscores
+	// return strings.ReplaceAll(url, "/?%*:|<>", "_") // \, "
+	// return strings.ReplaceAll(url, `/\?%*:|"<>`, "_")
+	// return strings.ReplaceAll(url, "?%*:/|\"<>", "_")
+	// return strings.ReplaceAll(url, `/\?%*:|"<>\`, "_")
+	url = strings.Replace(url, "http://", "", -1)
+	url = strings.Replace(url, "https://", "", -1)
+	url = strings.Replace(url, "/", "_", -1)
+	return strings.ReplaceAll(url, "/?%*:|<>", "_") // \, "
 }
 
 func main() {
@@ -88,6 +114,8 @@ func main() {
 			return
 		}
 	})
+
 	// Start the server
 	http.ListenAndServe(":8080", nil)
+
 }
