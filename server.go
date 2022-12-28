@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -130,6 +131,7 @@ func main() {
 	})
 
 	// Start the server
+	log.Println("Starting server on port 8080...")
 	http.ListenAndServe(":8080", nil)
 
 }

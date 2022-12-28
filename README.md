@@ -19,6 +19,8 @@ Table of contents
 
 * Responding with HTTP errors if there is an issue with the request or the server 
 
+* Sanitizing the URL of the webpage before using it as the file name for the cached webpage.
+
 ## Installation:
 To install the Webpage Downloader Server, you will need to have Go installed on your machine. You can download Go from the [official website](https://go.dev/dl/) and follow the installation instructions.
 
