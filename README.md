@@ -1,4 +1,4 @@
-# Webpage Downloader Server using Go
+# Webpage Downloader Server using Go (Backend Assignment)
 This is a Go server program that provides an endpoint for downloading a webpage and returning the downloaded file to the client. It also uses a **pool of workers** that do the work of downloading the requested webpage, limiting the number of requests based on number of active workers.
 
 The server accepts POST requests to the `/pagesource` endpoint with a JSON payload containing the URL and retry limit of the webpage to download, which then retrieves the webpage from the specified URL, downloads the webpage as a local file, and returns a JSON payload with the ID, URI, and source URI of the downloaded file. 
